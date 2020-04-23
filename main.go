@@ -19,6 +19,7 @@ import (
 
 	"github.com/artdarek/go-unzip"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/mux"
 )
 
 var covidCase struct {
@@ -60,34 +61,20 @@ var covidCase struct {
 }
 
 func main() {
-	// err := DownloadFile("data.zip", "http://187.191.75.115/gobmx/salud/datos_abiertos/datos_abiertos_covid19.zip")
-	// if err != nil {
-	// 	fmt.Println("ERROR Downloading file", err)
-	// }
-	err := UnzipFile("data.zip", "data")
-
-	if err != nil {
-		fmt.Println("ERROR Unzipping file", err)
-	}
-
-	files, err := ioutil.ReadDir("data")
-
-	oldPath := fmt.Sprintf("data/%s", files[0].Name())
-	os.Rename(oldPath, "data/data.csv")
-
 	db, err := sql.Open("mysql", "root:[]@/covid")
 	if err != nil {
 		panic(err.Error())
 	}
 	defer db.Close()
 
-	csvReader("./data/data.csv", db)
+	// If cron job is due (present or past due_date), retrieve data
+	// retrieveData(db)
 
-	// router := mux.NewRouter()
-	// router.HandleFunc("/", getData).Methods("GET")
+	router := mux.NewRouter()
+	router.HandleFunc("/", getData).Methods("GET")
 
-	// log.Println("App running at port 5000")
-	// http.ListenAndServe(":5000", router)
+	log.Println("App running at port 5000")
+	http.ListenAndServe(":5000", router)
 }
 
 // DownloadFile will download a url to a local file
@@ -122,7 +109,7 @@ func UnzipFile(inputFile string, outputDirectory string) error {
 	return err
 }
 
-func csvReader(inputCsvFile string, db *sql.DB) {
+func writeCSVToDB(inputCsvFile string, db *sql.DB) {
 	recordFile, err := os.Open(inputCsvFile)
 	if err != nil {
 		fmt.Println("An error encountered ::", err)
@@ -184,4 +171,22 @@ func csvReader(inputCsvFile string, db *sql.DB) {
 
 func getData(r http.ResponseWriter, w *http.Request) {
 
+}
+
+func retrieveData(db *sql.DB) {
+	err := DownloadFile("data.zip", "http://187.191.75.115/gobmx/salud/datos_abiertos/datos_abiertos_covid19.zip")
+	if err != nil {
+		fmt.Println("ERROR Downloading file", err)
+	}
+	err = UnzipFile("data.zip", "data")
+
+	if err != nil {
+		fmt.Println("ERROR Unzipping file", err)
+	}
+
+	files, err := ioutil.ReadDir("data")
+
+	oldPath := fmt.Sprintf("data/%s", files[0].Name())
+	os.Rename(oldPath, "data/data.csv")
+	writeCSVToDB("./data/data.csv", db)
 }
