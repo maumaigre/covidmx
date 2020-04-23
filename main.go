@@ -63,18 +63,26 @@ var covidCase struct {
 func main() {
 	port := os.Getenv("PORT")
 
+	mysqlUser := os.Getenv("JAWSDB_USER")
+	mysqlPwd := os.Getenv("JAWSDB_PWD")
+	mysqlHost := os.Getenv("JAWSDB_HOST")
+	mysqlPort := os.Getenv("JAWSDB_PORT")
+	mysqlDB := os.Getenv("JAWSDB_DB")
+
 	if port == "" {
 		log.Fatal("$PORT must be set")
 	}
 
-	db, err := sql.Open("mysql", "root:[]@/covid")
+	mysqlStringConnection := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", mysqlUser, mysqlPwd, mysqlHost, mysqlPort, mysqlDB)
+
+	db, err := sql.Open("mysql", mysqlStringConnection)
 	if err != nil {
 		panic(err.Error())
 	}
 	defer db.Close()
 
 	// If cron job is due (present or past due_Date), retrieve data
-	// retrieveData(db)
+	retrieveData(db)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/", getData).Methods("GET")
