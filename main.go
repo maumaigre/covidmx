@@ -63,11 +63,11 @@ var covidCase struct {
 func main() {
 	port := os.Getenv("PORT")
 
-	mysqlUser := os.Getenv("JAWSDB_USER")
-	mysqlPwd := os.Getenv("JAWSDB_PWD")
-	mysqlHost := os.Getenv("JAWSDB_HOST")
-	mysqlPort := os.Getenv("JAWSDB_PORT")
-	mysqlDB := os.Getenv("JAWSDB_DB")
+	mysqlUser := os.Getenv("DB_USER")
+	mysqlPwd := os.Getenv("DB_PWD")
+	mysqlHost := os.Getenv("DB_HOST")
+	mysqlPort := os.Getenv("DB_PORT")
+	mysqlDB := os.Getenv("DB_NAME")
 
 	if port == "" {
 		log.Fatal("$PORT must be set")
