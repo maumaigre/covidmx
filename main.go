@@ -67,7 +67,7 @@ func main() {
 	}
 	defer db.Close()
 
-	// If cron job is due (present or past due_date), retrieve data
+	// If cron job is due (present or past due_Date), retrieve data
 	// retrieveData(db)
 
 	router := mux.NewRouter()
@@ -169,8 +169,10 @@ func writeCSVToDB(inputCsvFile string, db *sql.DB) {
 	}
 }
 
-func getData(r http.ResponseWriter, w *http.Request) {
-
+func getData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	w.Write([]byte("{message: 'app running'}"))
 }
 
 func retrieveData(db *sql.DB) {
