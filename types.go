@@ -38,3 +38,9 @@ type CovidCase struct {
 	PaisOrigen         string `db:"PAIS_ORIGEN"`
 	Uci                int    `db:"UCI"`
 }
+
+type Stats struct {
+	Total     int `db:"total"`
+	Confirmed int `db:"confirmed"`
+	Dead      int `db:"dead"`
+}

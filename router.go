@@ -10,5 +10,7 @@ func InitRouter() *mux.Router {
 
 	router.HandleFunc("/cases", getData).Methods("GET")
 	router.HandleFunc("/stats", getStats).Methods("GET")
+
+	router.HandleFunc("/forceFetch", forceFetch).Methods("POST")
 	return router
 }

@@ -11,25 +11,65 @@ import (
 	"strings"
 
 	"github.com/artdarek/go-unzip"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // FetchData downloads, unzips and renames file to data.csv
 func FetchData() {
+
 	err := downloadFile("data.zip", "http://187.191.75.115/gobmx/salud/datos_abiertos/datos_abiertos_covid19.zip")
 	if err != nil {
 		fmt.Println("ERROR Downloading file", err)
 	}
-	err = unzipFile("data.zip", "data")
+	err = unzipFile("data.zip", "data_new")
 
 	if err != nil {
 		fmt.Println("ERROR Unzipping file", err)
 	}
 
-	files, err := ioutil.ReadDir("data")
+	files, err := ioutil.ReadDir("data_new")
 
-	oldPath := fmt.Sprintf("data/%s", files[0].Name())
-	os.Rename(oldPath, "data/data.csv")
-	writeCSVToDB("./data/data.csv")
+	oldPath := fmt.Sprintf("data_new/%s", files[0].Name())
+	os.Rename(oldPath, "data_new/data.csv")
+
+	files, err = ioutil.ReadDir("data")
+
+	if len(files) >= 1 {
+
+		content, err := ioutil.ReadFile("./data_new/data.csv")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		file1 := string(content)
+
+		content, err = ioutil.ReadFile("./data/data.csv")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		file2 := string(content)
+
+		dmp := diffmatchpatch.New()
+
+		diffs := dmp.DiffMain(file1, file2, false)
+
+		arr := dmp.DiffM(diffs)
+
+		fmt.Println(arr)
+		_ = ioutil.WriteFile("./data_new/diff.csv", []byte(arr), 0644)
+
+		os.Remove("./data/data.csv")
+
+		os.Rename("./data_new/data.csv", "./data/data.csv")
+
+		writeCSVToDB("./data_new/diff.csv", true)
+
+		os.RemoveAll("./data_new/")
+
+	} else {
+		writeCSVToDB("./data/data.csv", false)
+	}
 }
 
 func downloadFile(filepath string, url string) error {
@@ -58,7 +98,7 @@ func unzipFile(inputFile string, outputDirectory string) error {
 	return err
 }
 
-func writeCSVToDB(inputCsvFile string) {
+func writeCSVToDB(inputCsvFile string, diff bool) {
 	recordFile, err := os.Open(inputCsvFile)
 	if err != nil {
 		fmt.Println("An error encountered ::", err)
@@ -108,7 +148,14 @@ func writeCSVToDB(inputCsvFile string) {
 		log.Fatal(err)
 	}
 
-	for _, row := range records[1:] {
+	var slicedRecords [][]string
+	if diff {
+		slicedRecords = records
+	} else {
+		slicedRecords = records[1:]
+	}
+
+	for _, row := range slicedRecords {
 		statement := fmt.Sprintf(`%s ("%s");`, stmt, strings.Join(row, `", "`))
 		fmt.Println(statement)
 		_, err := db.Exec(statement)

@@ -7,4 +7,6 @@ require (
 	github.com/go-sql-driver/mysql v1.5.1-0.20200311113236-681ffa848bae
 	github.com/gorilla/mux v1.7.4
 	github.com/jmoiron/sqlx v1.2.0
+	github.com/mileusna/crontab v0.0.0-20180909013013-f182897de5d8
+	github.com/sergi/go-diff v1.1.0
 )

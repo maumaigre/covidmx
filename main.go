@@ -14,9 +14,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/mileusna/crontab"
 )
 
 var db *sqlx.DB
@@ -33,8 +35,12 @@ func main() {
 
 	router := InitRouter()
 
-	// If cron job is due (present or past due_Date), retrieve data
-	// go FetchData()
+	ctab := crontab.New() // create cron table
+
+	ctab.MustAddJob("0 * * * *", func() {
+		fmt.Println("Running cron job fetch data")
+		go FetchData()
+	})
 
 	log.Println("App running at port 5000")
 	http.ListenAndServe(":"+port, router)
@@ -43,12 +49,8 @@ func main() {
 
 func getStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	var count struct {
-		Total     int `db:"total"`
-		Confirmed int `db:"confirmed"`
-		Dead      int `db:"dead"`
-	}
-	err := db.Get(&count, `SELECT COUNT(*) as total,
+	var stats Stats
+	err := db.Get(&stats, `SELECT COUNT(*) as total,
 	sum(case when RESULTADO = 1 then 1 end) as confirmed, 
 		sum(case when RESULTADO = 1 AND FECHA_DEF NOT LIKE "9999-%%-%%" then 1 end) as dead 
 	FROM cases`)
@@ -58,17 +60,29 @@ func getStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	countJSON, err := json.Marshal(count)
+	statsJSON, err := json.Marshal(stats)
 
 	w.WriteHeader(200)
-	w.Write([]byte(fmt.Sprintf(`{"count": %s}`, countJSON)))
+	w.Write([]byte(fmt.Sprintf(`{"count": %s}`, statsJSON)))
 }
 
 func getData(w http.ResponseWriter, r *http.Request) {
+	const defaultCount = 10
+	requestedPage, err := strconv.Atoi(r.URL.Query().Get("page"))
+	requestedCount, err := strconv.Atoi(r.URL.Query().Get("count"))
+	fmt.Println(requestedPage)
+	if requestedPage <= 0 {
+		requestedPage = 1
+	}
+
+	if requestedCount <= 0 || requestedCount > 100 {
+		requestedCount = defaultCount
+	}
+
 	var covidCases []CovidCase
 	var totalCases int
 	w.Header().Set("Content-Type", "application/json")
-	rows, err := db.Queryx("SELECT * FROM cases WHERE resultado = 1 LIMIT 5")
+	rows, err := db.Queryx("SELECT * FROM cases WHERE resultado = 1 ORDER BY FECHA_INGRESO DESC LIMIT ? OFFSET ?", requestedCount, ((requestedPage - 1) * 5))
 
 	if err != nil {
 		w.Write([]byte(`{"error": "ERROR Querying DB"}`))
@@ -91,7 +105,15 @@ func getData(w http.ResponseWriter, r *http.Request) {
 		"cases": %s,
 		"pagination": {
 			"total": %d,
+			"totalPages": %d
 		}
 	}
-	`, rowsJSON, totalCases)))
+	`, rowsJSON, totalCases, totalCases/requestedCount)))
+}
+
+func forceFetch(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Running cron job fetch data forcefully")
+	go FetchData()
+	w.WriteHeader(200)
+	w.Write([]byte(fmt.Sprintf("Running force fetch")))
 }
