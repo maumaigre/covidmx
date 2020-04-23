@@ -22,6 +22,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+var db *sql.DB
+
 var covidCase struct {
 	fechaActualizacion string `mysql:"FECHA_ACTUALIZACION"`
 	idRegistro         string `mysql:"ID_REGISTRO"`
@@ -82,7 +84,7 @@ func main() {
 	defer db.Close()
 
 	// If cron job is due (present or past due_Date), retrieve data
-	go retrieveData(db)
+	// go retrieveData()
 
 	router := mux.NewRouter()
 	router.HandleFunc("/", getData).Methods("GET")
@@ -123,7 +125,7 @@ func UnzipFile(inputFile string, outputDirectory string) error {
 	return err
 }
 
-func writeCSVToDB(inputCsvFile string, db *sql.DB) {
+func writeCSVToDB(inputCsvFile string) {
 	recordFile, err := os.Open(inputCsvFile)
 	if err != nil {
 		fmt.Println("An error encountered ::", err)
@@ -186,10 +188,15 @@ func writeCSVToDB(inputCsvFile string, db *sql.DB) {
 func getData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
-	w.Write([]byte(`{"message": "App running"}`))
+	result, err := db.Exec("SELECT * FROM cases WHERE resultado = 1")
+
+	if err != nil {
+		w.Write([]byte(`{"error": "ERROR Querying DB"}`))
+	}
+	w.Write([]byte(fmt.Sprintf(`{"confirmed_cases": "%s"}`, result)))
 }
 
-func retrieveData(db *sql.DB) {
+func retrieveData() {
 	err := DownloadFile("data.zip", "http://187.191.75.115/gobmx/salud/datos_abiertos/datos_abiertos_covid19.zip")
 	if err != nil {
 		fmt.Println("ERROR Downloading file", err)
@@ -204,5 +211,5 @@ func retrieveData(db *sql.DB) {
 
 	oldPath := fmt.Sprintf("data/%s", files[0].Name())
 	os.Rename(oldPath, "data/data.csv")
-	writeCSVToDB("./data/data.csv", db)
+	writeCSVToDB("./data/data.csv")
 }
