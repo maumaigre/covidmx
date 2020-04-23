@@ -61,6 +61,12 @@ var covidCase struct {
 }
 
 func main() {
+	port := os.Getenv("PORT")
+
+	if port == "" {
+		log.Fatal("$PORT must be set")
+	}
+
 	db, err := sql.Open("mysql", "root:[]@/covid")
 	if err != nil {
 		panic(err.Error())
@@ -74,7 +80,7 @@ func main() {
 	router.HandleFunc("/", getData).Methods("GET")
 
 	log.Println("App running at port 5000")
-	http.ListenAndServe(":5000", router)
+	http.ListenAndServe(":"+port, router)
 }
 
 // DownloadFile will download a url to a local file
