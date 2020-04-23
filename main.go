@@ -133,7 +133,7 @@ func writeCSVToDB(inputCsvFile string, db *sql.DB) {
 	// 3. Read all the records
 	records, _ := reader.ReadAll()
 
-	stmt := `INSERT INTO cases(FECHA_ACTUALIZACION,
+	stmt := `INSERT IGNORE INTO cases(FECHA_ACTUALIZACION,
 		ID_REGISTRO,
 		ORIGEN,
 		SECTOR,
