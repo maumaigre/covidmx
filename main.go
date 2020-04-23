@@ -178,7 +178,7 @@ func writeCSVToDB(inputCsvFile string, db *sql.DB) {
 func getData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
-	w.Write([]byte("{message: 'app running'}"))
+	w.Write([]byte(`{"message": "App running"}`))
 }
 
 func retrieveData(db *sql.DB) {
