@@ -7,7 +7,6 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -20,11 +19,12 @@ import (
 	"github.com/artdarek/go-unzip"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
+	"github.com/jmoiron/sqlx"
 )
 
-var db *sql.DB
+var db *sqlx.DB
 
-var covidCase struct {
+type CovidCase struct {
 	fechaActualizacion string `mysql:"FECHA_ACTUALIZACION"`
 	idRegistro         string `mysql:"ID_REGISTRO"`
 	origen             int    `mysql:"ORIGEN"`
@@ -68,16 +68,23 @@ func main() {
 	mysqlUser := os.Getenv("DB_USER")
 	mysqlPwd := os.Getenv("DB_PWD")
 	mysqlHost := os.Getenv("DB_HOST")
-	mysqlPort := os.Getenv("DB_PORT")
+	// mysqlPort := os.Getenv("DB_PORT")
 	mysqlDB := os.Getenv("DB_NAME")
 
 	if port == "" {
 		log.Fatal("$PORT must be set")
 	}
 
-	mysqlStringConnection := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", mysqlUser, mysqlPwd, mysqlHost, mysqlPort, mysqlDB)
+	conn := fmt.Sprintf(
+		"%s:%s@(%s)/%s?parseTime=true",
+		mysqlUser,
+		mysqlPwd,
+		mysqlHost,
+		mysqlDB,
+	)
 
-	db, err := sql.Open("mysql", mysqlStringConnection)
+	var err error
+	db, err = sqlx.Connect("mysql", conn)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -186,14 +193,23 @@ func writeCSVToDB(inputCsvFile string) {
 }
 
 func getData(w http.ResponseWriter, r *http.Request) {
+	var covidCases []CovidCase
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-	result, err := db.Exec("SELECT * FROM cases WHERE resultado = 1")
+	rows, err := db.Queryx("SELECT * FROM cases WHERE resultado = 1;")
 
 	if err != nil {
 		w.Write([]byte(`{"error": "ERROR Querying DB"}`))
 	}
-	w.Write([]byte(fmt.Sprintf(`{"confirmed_cases": "%s"}`, result)))
+
+	for rows.Next() {
+		var covidCase CovidCase
+		err = rows.StructScan(&covidCase)
+
+		covidCases = append(covidCases, covidCase)
+	}
+
+	w.WriteHeader(200)
+	w.Write([]byte(fmt.Sprintf(`{"confirmed": "%d"}`, len(covidCases))))
 }
 
 func retrieveData() {
