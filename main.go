@@ -82,7 +82,7 @@ func main() {
 	defer db.Close()
 
 	// If cron job is due (present or past due_Date), retrieve data
-	retrieveData(db)
+	go retrieveData(db)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/", getData).Methods("GET")
