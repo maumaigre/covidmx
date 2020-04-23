@@ -1,0 +1,25 @@
+{
+	"ImportPath": "covidmx",
+	"GoVersion": "go1.14",
+	"GodepVersion": "v80",
+	"Packages": [
+		"./"
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/artdarek/go-unzip",
+			"Comment": "v1.0.0",
+			"Rev": "6b0fdfb78726fde9025d01cbe254893449f26c50"
+		},
+		{
+			"ImportPath": "github.com/go-sql-driver/mysql",
+			"Comment": "v1.5.0-5-g681ffa8",
+			"Rev": "681ffa848bae8d0d7b1a452963c0705b132308f7"
+		},
+		{
+			"ImportPath": "github.com/gorilla/mux",
+			"Comment": "v1.7.4",
+			"Rev": "75dcda0896e109a2a22c9315bca3bb21b87b2ba5"
+		}
+	]
+}
