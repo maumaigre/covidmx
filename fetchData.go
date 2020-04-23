@@ -54,7 +54,7 @@ func FetchData() {
 
 		diffs := dmp.DiffMain(file1, file2, false)
 
-		arr := dmp.DiffM(diffs)
+		arr := DiffCSV(diffs)
 
 		fmt.Println(arr)
 		_ = ioutil.WriteFile("./data_new/diff.csv", []byte(arr), 0644)
