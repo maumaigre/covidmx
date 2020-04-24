@@ -112,8 +112,8 @@ func getData(w http.ResponseWriter, r *http.Request) {
 }
 
 func forceFetch(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Running cron job fetch data forcefully")
+	fmt.Println("Running fetch data task forcefully")
 	go FetchData()
 	w.WriteHeader(200)
-	w.Write([]byte(fmt.Sprintf("Running force fetch")))
+	w.Write([]byte(fmt.Sprintf("Running manual fetch data task. May take a few moments to update")))
 }

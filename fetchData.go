@@ -36,9 +36,7 @@ func FetchData() {
 
 	files, err = ioutil.ReadDir("data")
 
-	// if len(files) >= 1 {
-
-	if false {
+	if len(files) >= 1 {
 
 		recordFile, _ := os.Open("./data/data.csv")
 		recordFile2, _ := os.Open("./data_new/data.csv")
@@ -55,8 +53,7 @@ func FetchData() {
 
 		for i, row := range slicedRecords2 {
 			if i <= len(slicedRecords1)-1 {
-				fmt.Println(slicedRecords2[i], slicedRecords1[i])
-				if !reflect.DeepEqual(slicedRecords2[i], slicedRecords1[i]) {
+				if !reflect.DeepEqual(slicedRecords2[i][1:], slicedRecords1[i][1:]) {
 					updatedValues = append(updatedValues, row)
 				}
 			} else {
@@ -67,12 +64,15 @@ func FetchData() {
 		os.Remove("data/data.csv")
 
 		os.Rename("data_new/data.csv", "data/data.csv")
-
-		patchValuesToDB(newValues, updatedValues)
-
 		os.RemoveAll("./data_new/")
 
+		if len(newValues) > 0 || len(updatedValues) > 0 {
+			patchValuesToDB(newValues, updatedValues)
+		} else {
+			fmt.Println("No changes found in new CSV file. Skipping patch")
+		}
 	} else {
+		fmt.Println("No old CSV File found, generating from scratch")
 		os.MkdirAll("./data", 0755)
 		os.Rename("./data_new/data.csv", "./data/data.csv")
 		os.RemoveAll("./data_new/")
@@ -108,6 +108,7 @@ func unzipFile(inputFile string, outputDirectory string) error {
 
 func writeCSVToDB(inputCsvFile string) {
 	db.Exec(`DELETE FROM cases`)
+
 	recordFile, err := os.Open(inputCsvFile)
 	if err != nil {
 		fmt.Println("An error encountered ::", err)
@@ -119,7 +120,6 @@ func writeCSVToDB(inputCsvFile string) {
 
 	for _, row := range records[1:] {
 		statement := fmt.Sprintf(`%s ("%s");`, InsertStatement, strings.Join(row, `", "`))
-		fmt.Println(statement)
 		_, err := db.Exec(statement)
 		if err != nil {
 			log.Fatal(err)
@@ -128,5 +128,23 @@ func writeCSVToDB(inputCsvFile string) {
 }
 
 func patchValuesToDB(updatedValues [][]string, newValues [][]string) {
-	fmt.Println(len(updatedValues), len(newValues))
+	fmt.Println(fmt.Sprintf("Patching %d new values and %d updated values", len(newValues), len(updatedValues)))
+	for _, row := range newValues {
+		statement := fmt.Sprintf(`%s ("%s");`, InsertStatement, strings.Join(row, `", "`))
+		// fmt.Println(statement)
+		_, err := db.Exec(statement)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	for _, row := range updatedValues {
+		statement := fmt.Sprintf(`UPDATE IGNORE cases SET RESULTADO = '%s', INTUBADO = '%s', NEUMONIA = '%s', FECHA_DEF = '%s', UCI = '%s'  WHERE ID_REGISTRO= '%s'`, row[30], row[13], row[14], row[12], row[34], row[1])
+		// fmt.Println(statement)
+		_, err := db.Exec(statement)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 }
