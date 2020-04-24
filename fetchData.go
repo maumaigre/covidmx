@@ -19,11 +19,11 @@ func FetchData() {
 	var updatedValues [][]string
 	var newValues [][]string
 
-	err := downloadFile("data.zip", "http://187.191.75.115/gobmx/salud/datos_abiertos/datos_abiertos_covid19.zip")
+	err := downloadFile("./data.zip", "http://187.191.75.115/gobmx/salud/datos_abiertos/datos_abiertos_covid19.zip")
 	if err != nil {
 		fmt.Println("ERROR Downloading file", err)
 	}
-	err = unzipFile("data.zip", "data_new/")
+	err = unzipFile("./data.zip", "./data_new/")
 
 	if err != nil {
 		fmt.Println("ERROR Unzipping file", err)
@@ -31,8 +31,8 @@ func FetchData() {
 
 	files, err := ioutil.ReadDir("data_new")
 
-	oldPath := fmt.Sprintf("data_new/%s", files[0].Name())
-	os.Rename(oldPath, "data_new/data.csv")
+	oldPath := fmt.Sprintf("./data_new/%s", files[0].Name())
+	os.Rename(oldPath, "./data_new/data.csv")
 
 	files, err = ioutil.ReadDir("data")
 
@@ -61,9 +61,9 @@ func FetchData() {
 			}
 		}
 
-		os.Remove("data/data.csv")
+		os.Remove("./data/data.csv")
 
-		os.Rename("data_new/data.csv", "data/data.csv")
+		os.Rename("./data_new/data.csv", "./data/data.csv")
 		os.RemoveAll("./data_new/")
 
 		if len(newValues) > 0 || len(updatedValues) > 0 {

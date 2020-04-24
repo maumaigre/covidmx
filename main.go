@@ -16,6 +16,7 @@ import (
 	"os"
 	"strconv"
 
+	sq "github.com/Masterminds/squirrel"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/mileusna/crontab"
@@ -68,9 +69,9 @@ func getStats(w http.ResponseWriter, r *http.Request) {
 
 func getData(w http.ResponseWriter, r *http.Request) {
 	const defaultCount = 10
-	requestedPage, err := strconv.Atoi(r.URL.Query().Get("page"))
-	requestedCount, err := strconv.Atoi(r.URL.Query().Get("count"))
-	fmt.Println(requestedPage)
+
+	requestedPage, err := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
+	requestedCount, err := strconv.ParseUint(r.URL.Query().Get("count"), 10, 64)
 	if requestedPage <= 0 {
 		requestedPage = 1
 	}
@@ -80,9 +81,17 @@ func getData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var covidCases []CovidCase
-	var totalCases int
+	var totalCases uint64
 	w.Header().Set("Content-Type", "application/json")
-	rows, err := db.Queryx("SELECT * FROM cases WHERE resultado = 1 ORDER BY FECHA_INGRESO DESC LIMIT ? OFFSET ?", requestedCount, ((requestedPage - 1) * 5))
+	offset := (requestedPage - 1) * requestedCount
+	sqlQuery := sq.Select("*").From("cases").OrderBy("FECHA_INGRESO DESC").Limit(requestedCount).Offset(offset)
+
+	if r.URL.Query().Get("resultado") != "" {
+		sqlQuery = sqlQuery.Where("RESULTADO", r.URL.Query().Get("resultado"))
+	}
+	sql, _, err := sqlQuery.ToSql()
+
+	rows, err := db.Queryx(sql)
 
 	if err != nil {
 		w.Write([]byte(`{"error": "ERROR Querying DB"}`))
@@ -94,7 +103,6 @@ func getData(w http.ResponseWriter, r *http.Request) {
 		err = rows.StructScan(&covidCase)
 
 		covidCases = append(covidCases, covidCase)
-		fmt.Println("a", covidCase)
 	}
 
 	rowsJSON, err := json.Marshal(covidCases)
@@ -104,11 +112,12 @@ func getData(w http.ResponseWriter, r *http.Request) {
 	{
 		"cases": %s,
 		"pagination": {
+			"count": %d,
 			"total": %d,
-			"totalPages": %d
+			"totalPages": %d,
 		}
 	}
-	`, rowsJSON, totalCases, totalCases/requestedCount)))
+	`, rowsJSON, requestedCount, totalCases, totalCases/requestedCount)))
 }
 
 func forceFetch(w http.ResponseWriter, r *http.Request) {
