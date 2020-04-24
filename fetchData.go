@@ -21,7 +21,7 @@ func FetchData() {
 	if err != nil {
 		fmt.Println("ERROR Downloading file", err)
 	}
-	err = unzipFile("data.zip", "data_new")
+	err = unzipFile("data.zip", "data_new/")
 
 	if err != nil {
 		fmt.Println("ERROR Unzipping file", err)
@@ -36,6 +36,7 @@ func FetchData() {
 
 	if len(files) >= 1 {
 
+		fmt.Println("TEST")
 		content, err := ioutil.ReadFile("./data_new/data.csv")
 		if err != nil {
 			log.Fatal(err)
@@ -50,24 +51,29 @@ func FetchData() {
 
 		file2 := string(content)
 
+		fmt.Println(len(file1), len(file2))
+
 		dmp := diffmatchpatch.New()
 
 		diffs := dmp.DiffMain(file1, file2, false)
 
 		arr := DiffCSV(diffs)
 
-		fmt.Println(arr)
+		fmt.Println("print", arr)
 		_ = ioutil.WriteFile("./data_new/diff.csv", []byte(arr), 0644)
 
-		os.Remove("./data/data.csv")
+		os.Remove("data/data.csv")
 
-		os.Rename("./data_new/data.csv", "./data/data.csv")
+		os.Rename("data_new/data.csv", "data/data.csv")
 
 		writeCSVToDB("./data_new/diff.csv", true)
 
 		os.RemoveAll("./data_new/")
 
 	} else {
+		os.MkdirAll("./data", 0755)
+		os.Rename("./data_new/data.csv", "./data/data.csv")
+		os.RemoveAll("./data_new/")
 		writeCSVToDB("./data/data.csv", false)
 	}
 }
