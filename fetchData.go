@@ -8,14 +8,16 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/artdarek/go-unzip"
-	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // FetchData downloads, unzips and renames file to data.csv
 func FetchData() {
+	var updatedValues [][]string
+	var newValues [][]string
 
 	err := downloadFile("data.zip", "http://187.191.75.115/gobmx/salud/datos_abiertos/datos_abiertos_covid19.zip")
 	if err != nil {
@@ -34,39 +36,39 @@ func FetchData() {
 
 	files, err = ioutil.ReadDir("data")
 
-	if len(files) >= 1 {
+	// if len(files) >= 1 {
 
-		fmt.Println("TEST")
-		content, err := ioutil.ReadFile("./data_new/data.csv")
-		if err != nil {
-			log.Fatal(err)
+	if false {
+
+		recordFile, _ := os.Open("./data/data.csv")
+		recordFile2, _ := os.Open("./data_new/data.csv")
+
+		reader := csv.NewReader(recordFile)
+		records, _ := reader.ReadAll()
+
+		reader2 := csv.NewReader(recordFile2)
+
+		records2, _ := reader2.ReadAll()
+
+		slicedRecords1 := records[1:]
+		slicedRecords2 := records2[1:]
+
+		for i, row := range slicedRecords2 {
+			if i <= len(slicedRecords1)-1 {
+				fmt.Println(slicedRecords2[i], slicedRecords1[i])
+				if !reflect.DeepEqual(slicedRecords2[i], slicedRecords1[i]) {
+					updatedValues = append(updatedValues, row)
+				}
+			} else {
+				newValues = append(newValues, row)
+			}
 		}
-
-		file1 := string(content)
-
-		content, err = ioutil.ReadFile("./data/data.csv")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		file2 := string(content)
-
-		fmt.Println(len(file1), len(file2))
-
-		dmp := diffmatchpatch.New()
-
-		diffs := dmp.DiffMain(file1, file2, false)
-
-		arr := DiffCSV(diffs)
-
-		fmt.Println("print", arr)
-		_ = ioutil.WriteFile("./data_new/diff.csv", []byte(arr), 0644)
 
 		os.Remove("data/data.csv")
 
 		os.Rename("data_new/data.csv", "data/data.csv")
 
-		writeCSVToDB("./data_new/diff.csv", true)
+		patchValuesToDB(newValues, updatedValues)
 
 		os.RemoveAll("./data_new/")
 
@@ -74,7 +76,7 @@ func FetchData() {
 		os.MkdirAll("./data", 0755)
 		os.Rename("./data_new/data.csv", "./data/data.csv")
 		os.RemoveAll("./data_new/")
-		writeCSVToDB("./data/data.csv", false)
+		writeCSVToDB("./data/data.csv")
 	}
 }
 
@@ -104,7 +106,8 @@ func unzipFile(inputFile string, outputDirectory string) error {
 	return err
 }
 
-func writeCSVToDB(inputCsvFile string, diff bool) {
+func writeCSVToDB(inputCsvFile string) {
+	db.Exec(`DELETE FROM cases`)
 	recordFile, err := os.Open(inputCsvFile)
 	if err != nil {
 		fmt.Println("An error encountered ::", err)
@@ -114,59 +117,16 @@ func writeCSVToDB(inputCsvFile string, diff bool) {
 	// 3. Read all the records
 	records, _ := reader.ReadAll()
 
-	stmt := `INSERT IGNORE INTO cases(FECHA_ACTUALIZACION,
-		ID_REGISTRO,
-		ORIGEN,
-		SECTOR,
-		ENTIDAD_UM,
-		SEXO,
-		ENTIDAD_NAC,
-		ENTIDAD_RES,
-		MUNICIPIO_RES,
-		TIPO_PACIENTE,
-		FECHA_INGRESO,
-		FECHA_SINTOMAS,
-		FECHA_DEF,
-		INTUBADO,
-		NEUMONIA,
-		EDAD,
-		NACIONALIDAD,
-		EMBARAZO,
-		HABLA_LENGUA_INDIG,
-		DIABETES,
-		EPOC,
-		ASMA,
-		INMUSUPR,
-		HIPERTENSION,
-		OTRA_COM,
-		CARDIOVASCULAR,
-		OBESIDAD,
-		RENAL_CRONICA,
-		TABAQUISMO,
-		OTRO_CASO,
-		RESULTADO,
-		MIGRANTE,
-		PAIS_NACIONALIDAD,
-		PAIS_ORIGEN,
-		UCI
-	) VALUES `
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var slicedRecords [][]string
-	if diff {
-		slicedRecords = records
-	} else {
-		slicedRecords = records[1:]
-	}
-
-	for _, row := range slicedRecords {
-		statement := fmt.Sprintf(`%s ("%s");`, stmt, strings.Join(row, `", "`))
+	for _, row := range records[1:] {
+		statement := fmt.Sprintf(`%s ("%s");`, InsertStatement, strings.Join(row, `", "`))
 		fmt.Println(statement)
 		_, err := db.Exec(statement)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
+}
+
+func patchValuesToDB(updatedValues [][]string, newValues [][]string) {
+	fmt.Println(len(updatedValues), len(newValues))
 }
