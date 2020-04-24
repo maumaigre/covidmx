@@ -12,6 +12,9 @@ Built in Go (v1.14) with the following dependencies:
 * SQLx
 
 ## WIP
-* Filter/Query cases
+* Filter/Query cases (struct for possible filterable parameters)
+* Block force fetch if current goroutine is in process and once every X minutes
 * Front-end app / graphs
-* API Usage Readme
+* API Usage readme
+* Dynamic SQL query statements
+* Use structs for SQL queries
