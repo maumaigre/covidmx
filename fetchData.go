@@ -139,7 +139,7 @@ func patchValuesToDB(updatedValues [][]string, newValues [][]string) {
 	}
 
 	for _, row := range updatedValues {
-		statement := fmt.Sprintf(`UPDATE IGNORE cases SET RESULTADO = '%s', INTUBADO = '%s', NEUMONIA = '%s', FECHA_DEF = '%s', UCI = '%s'  WHERE ID_REGISTRO= '%s'`, row[30], row[13], row[14], row[12], row[34], row[1])
+		statement := fmt.Sprintf(`UPDATE IGNORE cases SET RESULTADO = '%s', INTUBADO = '%s', NEUMONIA = '%s', FECHA_DEF = '%s', UCI = '%s'  WHERE ID_REGISTRO= '%s';`, row[30], row[13], row[14], row[12], row[34], row[1])
 		// fmt.Println(statement)
 		_, err := db.Exec(statement)
 		if err != nil {
