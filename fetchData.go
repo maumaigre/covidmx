@@ -8,7 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"reflect"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/artdarek/go-unzip"
@@ -16,8 +17,6 @@ import (
 
 // FetchData downloads, unzips and renames file to data.csv
 func FetchData() {
-	var updatedValues [][]string
-	var newValues [][]string
 
 	err := downloadFile("./data.zip", "http://187.191.75.115/gobmx/salud/datos_abiertos/datos_abiertos_covid19.zip")
 	if err != nil {
@@ -34,50 +33,32 @@ func FetchData() {
 	oldPath := fmt.Sprintf("./data_new/%s", files[0].Name())
 	os.Rename(oldPath, "./data_new/data.csv")
 
-	files, err = ioutil.ReadDir("data")
+	oldFilesDir, err := ioutil.ReadDir("./data")
 
-	if len(files) >= 1 {
+	fmt.Println(oldFilesDir)
 
-		recordFile, _ := os.Open("./data/data.csv")
-		recordFile2, _ := os.Open("./data_new/data.csv")
-
-		reader := csv.NewReader(recordFile)
-		records, _ := reader.ReadAll()
-
-		reader2 := csv.NewReader(recordFile2)
-
-		records2, _ := reader2.ReadAll()
-
-		slicedRecords1 := records[1:]
-		slicedRecords2 := records2[1:]
-
-		for i, row := range slicedRecords2 {
-			if i <= len(slicedRecords1)-1 {
-				if !reflect.DeepEqual(slicedRecords2[i][1:], slicedRecords1[i][1:]) {
-					updatedValues = append(updatedValues, row)
-				}
-			} else {
-				newValues = append(newValues, row)
-			}
-		}
-
-		os.Remove("./data/data.csv")
-
-		os.Rename("./data_new/data.csv", "./data/data.csv")
-		os.RemoveAll("./data_new/")
-
-		if len(newValues) > 0 || len(updatedValues) > 0 {
-			patchValuesToDB(newValues, updatedValues)
+	if len(oldFilesDir) > 0 {
+		equal := CompareMD5("./data/data.csv", "./data_new/data.csv")
+		if !equal {
+			fmt.Println("New CSV File detected, inserting to DB")
+			writeCSVToDB("./data_new/data.csv")
 		} else {
-			fmt.Println("No changes found in new CSV file. Skipping patch")
+			fmt.Println("No changes detected to new CSV file. Skipping.")
 		}
 	} else {
-		fmt.Println("No old CSV File found, generating from scratch")
-		os.MkdirAll("./data", 0755)
-		os.Rename("./data_new/data.csv", "./data/data.csv")
-		os.RemoveAll("./data_new/")
-		writeCSVToDB("./data/data.csv")
+		err = os.Mkdir("./data", 0777)
+		fmt.Println("No previous CSV file detected, generating query to DB")
+		writeCSVToDB("./data_new/data.csv")
 	}
+
+	fmt.Println("Finished fetchData process.")
+
+	os.Rename("./data_new/data.csv", "./data/data.csv")
+
+	os.Remove("./data.sql")
+	os.Remove("./data.zip")
+	os.RemoveAll("./data_new")
+
 }
 
 func downloadFile(filepath string, url string) error {
@@ -113,38 +94,21 @@ func writeCSVToDB(inputCsvFile string) {
 	if err != nil {
 		fmt.Println("An error encountered ::", err)
 	}
-	// 2. Initialize the reader
 	reader := csv.NewReader(recordFile)
-	// 3. Read all the records
 	records, _ := reader.ReadAll()
+
+	newFile, _ := os.Create("data.sql")
 
 	for _, row := range records[1:] {
 		statement := fmt.Sprintf(`%s ("%s");`, InsertStatement, strings.Join(row, `", "`))
-		_, err := db.Exec(statement)
-		if err != nil {
-			log.Fatal(err)
-		}
+		newFile.WriteString(statement)
 	}
-}
+	path, err := os.Getwd()
+	cmd := exec.Command("/bin/sh", ".sql_import_data.sh", filepath.Join(path, newFile.Name()))
+	err = cmd.Run()
 
-func patchValuesToDB(updatedValues [][]string, newValues [][]string) {
-	fmt.Println(fmt.Sprintf("Patching %d new values and %d updated values", len(newValues), len(updatedValues)))
-	for _, row := range newValues {
-		statement := fmt.Sprintf(`%s ("%s");`, InsertStatement, strings.Join(row, `", "`))
-		// fmt.Println(statement)
-		_, err := db.Exec(statement)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	for _, row := range updatedValues {
-		statement := fmt.Sprintf(`UPDATE IGNORE cases SET RESULTADO = '%s', INTUBADO = '%s', NEUMONIA = '%s', FECHA_DEF = '%s', UCI = '%s'  WHERE ID_REGISTRO= '%s';`, row[30], row[13], row[14], row[12], row[34], row[1])
-		// fmt.Println(statement)
-		_, err := db.Exec(statement)
-		if err != nil {
-			log.Fatal(err)
-		}
+	if err != nil {
+		log.Fatalf("Error executing query.")
 	}
 
 }
