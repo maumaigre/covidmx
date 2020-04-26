@@ -104,7 +104,7 @@ func writeCSVToDB(inputCsvFile string) {
 		newFile.WriteString(statement)
 	}
 	path, err := os.Getwd()
-	cmd := exec.Command("/bin/sh", ".sql_import_data.sh", filepath.Join(path, newFile.Name()))
+	cmd := exec.Command("/bin/sh", "./sql_import_data.sh", filepath.Join(path, newFile.Name()))
 	err = cmd.Run()
 
 	if err != nil {
