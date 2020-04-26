@@ -1,17 +1,10 @@
-// * Download .zip from gob.mx
-// * Save .zip to server
-// * Extract .zip with its content (.csv)
-// * Parse .csv rows and save to MySQL DB
-// * Create API with router with search functionality
-// * Create DigitalOcean Droplet (MySQL Server)
-// * Deploy .go microservice to Heroku
-
 package main
 
 import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -51,14 +44,21 @@ func main() {
 func getStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var stats Stats
-	err := db.Get(&stats, `SELECT COUNT(*) as total,
+
+	sqlQuery := sq.Select(`COUNT(*) as total,
 	sum(case when RESULTADO = 1 then 1 end) as confirmed, 
-		sum(case when RESULTADO = 1 AND FECHA_DEF NOT LIKE "9999-%%-%%" then 1 end) as dead 
-	FROM cases`)
+		sum(case when RESULTADO = 1 AND FECHA_DEF NOT LIKE "9999-%%-%%" then 1 end) as dead`).From("cases")
+
+	if r.URL.Query().Get("entidad_res") != "" {
+		sqlQuery = sqlQuery.Where(fmt.Sprintf("ENTIDAD_RES = %s", r.URL.Query().Get("entidad_res")))
+	}
+
+	sql, _, err := sqlQuery.ToSql()
+
+	db.Get(&stats, sql)
 
 	if err != nil {
 		w.Write([]byte(`{"error": "ERROR Querying DB"}`))
-		return
 	}
 
 	statsJSON, err := json.Marshal(stats)
@@ -81,22 +81,35 @@ func getData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var covidCases []CovidCase
-	var totalCases uint64
+	var totalCases uint32
 	w.Header().Set("Content-Type", "application/json")
 	offset := (requestedPage - 1) * requestedCount
-	sqlQuery := sq.Select("*").From("cases").OrderBy("FECHA_INGRESO DESC").Limit(requestedCount).Offset(offset)
+	sqlQuery := sq.Select("*").From("cases").OrderBy("FECHA_INGRESO DESC")
+	countSQLQuery := sq.Select("COUNT(*)").From("cases")
 
 	if r.URL.Query().Get("resultado") != "" {
-		sqlQuery = sqlQuery.Where("RESULTADO", r.URL.Query().Get("resultado"))
+		sqlQuery = sqlQuery.Where(fmt.Sprintf("RESULTADO = %s", r.URL.Query().Get("resultado")))
+		countSQLQuery = countSQLQuery.Where(fmt.Sprintf("RESULTADO = %s", r.URL.Query().Get("resultado")))
 	}
-	sql, _, err := sqlQuery.ToSql()
+
+	if r.URL.Query().Get("entidad_res") != "" {
+		sqlQuery = sqlQuery.Where(fmt.Sprintf("ENTIDAD_RES = %s", r.URL.Query().Get("entidad_res")))
+		countSQLQuery = countSQLQuery.Where(fmt.Sprintf("ENTIDAD_RES = %s", r.URL.Query().Get("entidad_res")))
+	}
+
+	paginatedSQLQuery := sqlQuery.Limit(requestedCount).Offset(offset)
+
+	sql, _, err := paginatedSQLQuery.ToSql()
+
+	countSQL, _, err := countSQLQuery.ToSql()
 
 	rows, err := db.Queryx(sql)
+
+	db.Get(&totalCases, countSQL)
 
 	if err != nil {
 		w.Write([]byte(`{"error": "ERROR Querying DB"}`))
 	}
-	err = db.Get(&totalCases, "SELECT count(*) FROM cases")
 
 	for rows.Next() {
 		var covidCase CovidCase
@@ -108,6 +121,8 @@ func getData(w http.ResponseWriter, r *http.Request) {
 	rowsJSON, err := json.Marshal(covidCases)
 
 	w.WriteHeader(200)
+	var totalPages int
+	totalPages = int(math.Ceil(float64(totalCases) / float64(requestedCount)))
 	w.Write([]byte(fmt.Sprintf(`
 	{
 		"cases": %s,
@@ -117,7 +132,7 @@ func getData(w http.ResponseWriter, r *http.Request) {
 			"totalPages": %d,
 		}
 	}
-	`, rowsJSON, requestedCount, totalCases, totalCases/requestedCount)))
+	`, rowsJSON, requestedCount, totalCases, totalPages)))
 }
 
 func forceFetch(w http.ResponseWriter, r *http.Request) {
