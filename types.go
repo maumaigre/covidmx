@@ -44,3 +44,8 @@ type Stats struct {
 	Confirmed int `db:"confirmed"`
 	Dead      int `db:"dead"`
 }
+
+type StateStat struct {
+	EntidadRes int `db:"ENTIDAD_RES"`
+	Casos      int `db:"CASOS"`
+}

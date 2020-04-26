@@ -113,7 +113,7 @@ func getData(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var covidCase CovidCase
-		err = rows.StructScan(&covidCase)
+		rows.StructScan(&covidCase)
 
 		covidCases = append(covidCases, covidCase)
 	}
@@ -133,6 +133,30 @@ func getData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	`, rowsJSON, requestedCount, totalCases, totalPages)))
+}
+
+func getStateStats(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	sqlQuery := sq.Select("ENTIDAD_RES, COUNT(*) as CASOS").From("cases").Where("RESULTADO = 1").GroupBy("ENTIDAD_RES").OrderBy("count(*) desc")
+
+	sql, _, err := sqlQuery.ToSql()
+
+	if err != nil {
+		fmt.Println("Error getting query")
+	}
+
+	rows, err := db.Queryx(sql)
+
+	var cases []StateStat
+	for rows.Next() {
+		var entidadCaso StateStat
+		rows.StructScan(&entidadCaso)
+		cases = append(cases, entidadCaso)
+	}
+
+	responseJSON, err := json.Marshal(cases)
+	w.WriteHeader(200)
+	w.Write([]byte(responseJSON))
 }
 
 func forceFetch(w http.ResponseWriter, r *http.Request) {
