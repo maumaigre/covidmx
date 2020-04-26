@@ -28,7 +28,7 @@ func FetchData() {
 		fmt.Println("ERROR Unzipping file", err)
 	}
 
-	files, err := ioutil.ReadDir("data_new")
+	files, err := ioutil.ReadDir("./data_new")
 
 	oldPath := fmt.Sprintf("./data_new/%s", files[0].Name())
 	os.Rename(oldPath, "./data_new/data.csv")

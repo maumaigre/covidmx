@@ -126,3 +126,8 @@ func forceFetch(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	w.Write([]byte(fmt.Sprintf("Running manual fetch data task. May take a few moments to update")))
 }
+
+func getMain(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(200)
+	w.Write([]byte("CovidMx API Running"))
+}
