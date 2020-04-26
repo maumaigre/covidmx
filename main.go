@@ -139,7 +139,7 @@ func getStateStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	sqlQuery := sq.Select("ENTIDAD_RES, COUNT(*) as CASOS").From("cases").Where("RESULTADO = 1").GroupBy("ENTIDAD_RES")
 
-	requestedOrder := r.URL.Query().Get("orderBy")
+	requestedOrder := r.URL.Query().Get("order")
 
 	if requestedOrder == "asc" || requestedOrder == "desc" {
 		sqlQuery = sqlQuery.OrderBy(fmt.Sprintf("count(*) %s", requestedOrder))
