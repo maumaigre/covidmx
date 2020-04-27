@@ -51,6 +51,7 @@ type StateStat struct {
 }
 
 type DailyNewStat struct {
+	ID           int    `db:"id"`
 	FechaIngreso string `db:"fecha_ingreso"`
 	NewConfirmed int    `db:"nuevos_confirmados"`
 	NewDead      int    `db:"nuevos_fallecidos"`
