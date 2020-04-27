@@ -144,9 +144,9 @@ func updateDailyNewStat() {
 	newDead := currentStat.Dead - previousDailyStat.NewDead
 	newTotal := currentStat.Tested - previousDailyStat.Total
 
-	insertNewStatSQLQuery := sq.Insert("daily_new_stats").Columns("fecha_ingreso", "nuevos_confirmados",
+	insertNewStatSQLQuery := sq.Insert("daily_new_stats").Columns("id", "fecha_ingreso", "nuevos_confirmados",
 		"nuevos_fallecidos", "nuevos_pruebas", "total_pruebas", "total_confirmados", "total_fallecidos").Values(
-		dateFormatted, newConfirmed, newDead, newTotal, currentStat.Tested, currentStat.Confirmed, currentStat.Dead)
+		nil, dateFormatted, newConfirmed, newDead, newTotal, currentStat.Tested, currentStat.Confirmed, currentStat.Dead)
 
 	sql, _, err = insertNewStatSQLQuery.ToSql()
 
