@@ -40,7 +40,7 @@ type CovidCase struct {
 }
 
 type Stats struct {
-	Total     int `db:"total"`
+	Tested    int `db:"total"`
 	Confirmed int `db:"confirmed"`
 	Dead      int `db:"dead"`
 }
@@ -48,4 +48,14 @@ type Stats struct {
 type StateStat struct {
 	EntidadRes int `db:"ENTIDAD_RES"`
 	Casos      int `db:"CASOS"`
+}
+
+type DailyNewStat struct {
+	FechaIngreso string `db:"fecha_ingreso"`
+	NewConfirmed int    `db:"nuevos_confirmados"`
+	NewDead      int    `db:"nuevos_fallecidos"`
+	NewTested    int    `db:"nuevos_pruebas"`
+	Total        int    `db:"total_pruebas"`
+	Confirmed    int    `db:"total_confirmados"`
+	Dead         int    `db:"total_fallecidos"`
 }

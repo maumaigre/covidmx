@@ -11,7 +11,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/artdarek/go-unzip"
 )
 
@@ -111,4 +113,46 @@ func writeCSVToDB(inputCsvFile string) {
 		log.Fatalf("Error executing query.")
 	}
 
+	updateDailyNewStat()
+}
+
+func updateDailyNewStat() {
+	var previousDailyStat DailyNewStat
+	var currentStat Stats
+	previousDailyStatSQLQuery := sq.Select("*").From("daily_new_stats").OrderBy("fecha_ingreso desc").Limit(1)
+
+	previousDailyStatSQL, _, err := previousDailyStatSQLQuery.ToSql()
+
+	if err != nil {
+		fmt.Println("Error querying daily new stat")
+	}
+
+	sqlQuery := sq.Select(`COUNT(*) as total,
+	sum(case when RESULTADO = 1 then 1 end) as confirmed, 
+		sum(case when RESULTADO = 1 AND FECHA_DEF NOT LIKE "9999-%%-%%" then 1 end) as dead`).From("cases")
+
+	sql, _, err := sqlQuery.ToSql()
+
+	db.Get(&currentStat, sql)
+
+	db.Get(&previousDailyStat, previousDailyStatSQL)
+
+	dt := time.Now()
+	dateFormatted := dt.Format("2006-01-02")
+
+	newConfirmed := currentStat.Confirmed - previousDailyStat.Confirmed
+	newDead := currentStat.Dead - previousDailyStat.NewDead
+	newTotal := currentStat.Tested - previousDailyStat.Total
+
+	insertNewStatSQLQuery := sq.Insert("daily_new_stats").Columns("fecha_ingreso", "nuevos_confirmados",
+		"nuevos_fallecidos", "nuevos_pruebas", "total_pruebas", "total_confirmados", "total_fallecidos").Values(
+		dateFormatted, newConfirmed, newDead, newTotal, currentStat.Tested, currentStat.Confirmed, currentStat.Dead)
+
+	sql, _, err = insertNewStatSQLQuery.ToSql()
+
+	_, err = db.Exec(sql)
+
+	if err != nil {
+		fmt.Println("Error adding new daily stat")
+	}
 }

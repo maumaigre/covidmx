@@ -14,6 +14,8 @@ func InitRouter() *mux.Router {
 
 	subRouter.HandleFunc("/stateStats", getStateStats).Methods("GET")
 
+	subRouter.HandleFunc("/dailyNewStats", getDailyNewStats).Methods("GET")
+
 	subRouter.HandleFunc("/forceFetch", forceFetch).Methods("POST")
 	return router
 }

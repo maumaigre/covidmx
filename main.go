@@ -135,6 +135,30 @@ func getData(w http.ResponseWriter, r *http.Request) {
 	`, rowsJSON, requestedCount, totalCases, totalPages)))
 }
 
+func getDailyNewStats(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	sqlQuery := sq.Select("*").From("daily_new_stats").OrderBy("FECHA_INGRESO asc")
+
+	sql, _, err := sqlQuery.ToSql()
+
+	if err != nil {
+		fmt.Println("Error querying daily new stats")
+	}
+	rows, err := db.Queryx(sql)
+
+	var dailyNewStats []DailyNewStat
+	for rows.Next() {
+		var dailyNewStat DailyNewStat
+		rows.StructScan(&dailyNewStat)
+		dailyNewStats = append(dailyNewStats, dailyNewStat)
+	}
+
+	responseJSON, err := json.Marshal(dailyNewStats)
+	w.WriteHeader(200)
+	w.Write([]byte(responseJSON))
+
+}
+
 func getStateStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	sqlQuery := sq.Select("ENTIDAD_RES, COUNT(*) as CASOS").From("cases").Where("RESULTADO = 1").GroupBy("ENTIDAD_RES")
