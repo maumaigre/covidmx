@@ -46,8 +46,9 @@ type Stats struct {
 }
 
 type StateStat struct {
-	EntidadRes int `db:"ENTIDAD_RES"`
-	Casos      int `db:"CASOS"`
+	EntidadRes  int `db:"ENTIDAD_RES"`
+	Confirmados int `db:"CONFIRMADOS"`
+	Fallecidos  int `db:"FALLECIDOS"`
 }
 
 type DailyNewStat struct {

@@ -161,7 +161,7 @@ func getDailyNewStats(w http.ResponseWriter, r *http.Request) {
 
 func getStateStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	sqlQuery := sq.Select("ENTIDAD_RES, COUNT(*) as CASOS").From("cases").Where("RESULTADO = 1").GroupBy("ENTIDAD_RES")
+	sqlQuery := sq.Select("ENTIDAD_RES, COUNT(*) as CONFIRMADOS, sum(case when FECHA_DEF NOT LIKE '9999-%%-%%' then 1 end) as FALLECIDOS").From("cases").Where("RESULTADO = 1").GroupBy("ENTIDAD_RES")
 
 	requestedOrder := r.URL.Query().Get("order")
 
